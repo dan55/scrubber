@@ -1,0 +1,39 @@
+{
+  "name" : "bobo-scrubber-decrypt-and-move",
+  "description" : "",
+  "role" : "arn:aws:iam::529394626937:role/AWSGlueRole",
+  "executionProperty" : {
+    "maxConcurrentRuns" : 1
+  },
+  "command" : {
+    "name" : "glueetl",
+    "scriptLocation" : "s3://aws-glue-assets-529394626937-us-east-1/scripts/bobo-scrubber-decrypt-and-move.py",
+    "pythonVersion" : "3"
+  },
+  "defaultArguments" : {
+    "--enable-metrics" : "true",
+    "--enable-spark-ui" : "true",
+    "--spark-event-logs-path" : "s3://aws-glue-assets-529394626937-us-east-1/sparkHistoryLogs/",
+    "--enable-job-insights" : "false",
+    "--additional-python-modules" : "py3rijndael",
+    "--enable-glue-datacatalog" : "true",
+    "--enable-continuous-cloudwatch-log" : "true",
+    "--job-bookmark-option" : "job-bookmark-disable",
+    "--job-language" : "python",
+    "--TempDir" : "s3://aws-glue-assets-529394626937-us-east-1/temporary/"
+  },
+  "maxRetries" : 0,
+  "allocatedCapacity" : 2,
+  "timeout" : 10,
+  "maxCapacity" : 2.0,
+  "glueVersion" : "3.0",
+  "numberOfWorkers" : 2,
+  "workerType" : "G.1X",
+  "executionClass" : "STANDARD",
+  "sourceControlDetails" : {
+    "provider" : "GITHUB",
+    "repository" : "scrubber",
+    "branch" : "main",
+    "folder" : "bobo-scrubber-decrypt-and-move"
+  }
+}
