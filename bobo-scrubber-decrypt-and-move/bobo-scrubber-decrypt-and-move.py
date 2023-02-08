@@ -11,7 +11,7 @@ from awsglue.job import Job
 from awsglueml.transforms import EntityDetector
 from pyspark.sql.types import StringType
 from awsglue.dynamicframe import DynamicFrame
-# from pyspark.sql.functions import *
+from pyspark.sql.functions import udf, lit
 
 from botocore.exceptions import ClientError
 from py3rijndael import RijndaelCbc, ZeroPadding
@@ -75,39 +75,39 @@ def get_secret(secret_name="scrubber-enc-key", region_name="us-east-1"):
     return secret
     
 
-# def replace_cell(original_cell_value, sorted_reverse_start_end_tuples):
-#     if sorted_reverse_start_end_tuples:
-#         for entity in sorted_reverse_start_end_tuples:
-#             to_mask_value = original_cell_value[entity[0] : entity[1]]
-#             original_cell_value = original_cell_value.replace(to_mask_value, "###")
-#     return original_cell_value
+def replace_cell(original_cell_value, sorted_reverse_start_end_tuples):
+    if sorted_reverse_start_end_tuples:
+        for entity in sorted_reverse_start_end_tuples:
+            to_mask_value = original_cell_value[entity[0] : entity[1]]
+            original_cell_value = original_cell_value.replace(to_mask_value, "#####")
+    return original_cell_value
 
 
-# def row_pii(column_name, original_cell_value, detected_entities):
-#     if column_name in detected_entities.keys():
-#         entities = detected_entities[column_name]
-#         start_end_tuples = map(
-#             lambda entity: (entity["start"], entity["end"]), entities
-#         )
-#         sorted_reverse_start_end_tuples = sorted(
-#             start_end_tuples, key=lambda start_end: start_end[1], reverse=True
-#         )
-#         return replace_cell(original_cell_value, sorted_reverse_start_end_tuples)
-#     return original_cell_value
+def row_pii(column_name, original_cell_value, detected_entities):
+    if column_name in detected_entities.keys():
+        entities = detected_entities[column_name]
+        start_end_tuples = map(
+            lambda entity: (entity["start"], entity["end"]), entities
+        )
+        sorted_reverse_start_end_tuples = sorted(
+            start_end_tuples, key=lambda start_end: start_end[1], reverse=True
+        )
+        return replace_cell(original_cell_value, sorted_reverse_start_end_tuples)
+    return original_cell_value
 
 
-# row_pii_udf = udf(row_pii, StringType())
+row_pii_udf = udf(row_pii, StringType())
 
-# def recur(df, remaining_keys):
-#     if len(remaining_keys) == 0:
-#         return df
-#     else:
-#         head = remaining_keys[0]
-#         tail = remaining_keys[1:]
-#         modified_df = df.withColumn(
-#             head, row_pii_udf(lit(head), head, "DetectedEntities")
-#         )
-#         return recur(modified_df, tail)
+def recur(df, remaining_keys):
+    if len(remaining_keys) == 0:
+        return df
+    else:
+        head = remaining_keys[0]
+        tail = remaining_keys[1:]
+        modified_df = df.withColumn(
+            head, row_pii_udf(lit(head), head, "DetectedEntities")
+        )
+        return recur(modified_df, tail)
 
 
 # Initialize job
@@ -137,58 +137,57 @@ dyf_notes =dyf_notes.drop_fields(paths=["notes_decoded", "notes_decrypted"])
 debug_dynamic_frame(dyf_notes)
 
 # Script generated for node Detect Sensitive Data
-# entity_detector = EntityDetector()
-# detected_df = entity_detector.detect(
-#     dyf,
-#     [
-#         "PERSON_NAME",
-#         "EMAIL",
-#         "CREDIT_CARD",
-#         "IP_ADDRESS",
-#         "MAC_ADDRESS",
-#         "PHONE_NUMBER",
-#         "USA_PASSPORT_NUMBER",
-#         "USA_SSN",
-#         "USA_ITIN",
-#         "BANK_ACCOUNT",
-#         "USA_DRIVING_LICENSE",
-#         "USA_HCPCS_CODE",
-#         "USA_NATIONAL_DRUG_CODE",
-#         "USA_NATIONAL_PROVIDER_IDENTIFIER",
-#         "USA_DEA_NUMBER",
-#         "USA_HEALTH_INSURANCE_CLAIM_NUMBER",
-#         "USA_MEDICARE_BENEFICIARY_IDENTIFIER",
-#         "JAPAN_BANK_ACCOUNT",
-#         "JAPAN_DRIVING_LICENSE",
-#         "JAPAN_MY_NUMBER",
-#         "JAPAN_PASSPORT_NUMBER",
-#         "UK_BANK_ACCOUNT",
-#         "UK_BANK_SORT_CODE",
-#         "UK_DRIVING_LICENSE",
-#         "UK_ELECTORAL_ROLL_NUMBER",
-#         "UK_NATIONAL_HEALTH_SERVICE_NUMBER",
-#         "UK_NATIONAL_INSURANCE_NUMBER",
-#         "UK_PASSPORT_NUMBER",
-#         "UK_PHONE_NUMBER",
-#         "UK_UNIQUE_TAXPAYER_REFERENCE_NUMBER",
-#         "UK_VALUE_ADDED_TAX",
-#     ],
-#     "DetectedEntities",
-# )
+entity_detector = EntityDetector()
+detected_df = entity_detector.detect(
+    dyf_notes,
+    [
+        "PERSON_NAME",
+        "EMAIL",
+        "CREDIT_CARD",
+        "IP_ADDRESS",
+        "MAC_ADDRESS",
+        "PHONE_NUMBER",
+        "USA_PASSPORT_NUMBER",
+        "USA_SSN",
+        "USA_ITIN",
+        "BANK_ACCOUNT",
+        "USA_DRIVING_LICENSE",
+        "USA_HCPCS_CODE",
+        "USA_NATIONAL_DRUG_CODE",
+        "USA_NATIONAL_PROVIDER_IDENTIFIER",
+        "USA_DEA_NUMBER",
+        "USA_HEALTH_INSURANCE_CLAIM_NUMBER",
+        "USA_MEDICARE_BENEFICIARY_IDENTIFIER",
+        "JAPAN_BANK_ACCOUNT",
+        "JAPAN_DRIVING_LICENSE",
+        "JAPAN_MY_NUMBER",
+        "JAPAN_PASSPORT_NUMBER",
+        "UK_BANK_ACCOUNT",
+        "UK_BANK_SORT_CODE",
+        "UK_DRIVING_LICENSE",
+        "UK_ELECTORAL_ROLL_NUMBER",
+        "UK_NATIONAL_HEALTH_SERVICE_NUMBER",
+        "UK_NATIONAL_INSURANCE_NUMBER",
+        "UK_PASSPORT_NUMBER",
+        "UK_PHONE_NUMBER",
+        "UK_UNIQUE_TAXPAYER_REFERENCE_NUMBER",
+        "UK_VALUE_ADDED_TAX",
+    ],
+    "DetectedEntities",
+)
 
-# keys = dyf.toDF().columns
-# updated_masked_df = recur(detected_df.toDF(), keys)
-# updated_masked_df = updated_masked_df.drop("DetectedEntities")
+keys = dyf_notes.toDF().columns
+updated_masked_df = recur(detected_df.toDF(), keys)
+updated_masked_df = updated_masked_df.drop("DetectedEntities")
 
-# DetectSensitiveData = DynamicFrame.fromDF(
-#     updated_masked_df, glueContext, "updated_masked_df"
-# )
-
-# debug_dynamic_frame(DetectSensitiveData)
+DetectSensitiveData = DynamicFrame.fromDF(
+    updated_masked_df, glueContext, "updated_masked_df"
+)
+debug_dynamic_frame(DetectSensitiveData)
 
 # Write data
 glueContext.write_dynamic_frame.from_options(
-    frame=DetectSensitiveData, #dyf_decrypted,
+    frame=DetectSensitiveData, #dyf_decrypted,  
     connection_type="s3",
     format="json",
     connection_options={
